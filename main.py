@@ -36,6 +36,35 @@ def generate_voter_data():
         return "Error fetching data"
     
 
+def generate_candidate_data(candidate_number, total_parties):
+    response = requests.get(BASE_URL + '&gender=' + ('female' if candidate_number % 2 == 1 else 'male'))
+    if response.status_code == 200:
+        user_data = response.json()['results'][0]
+
+
+        return {
+            "candidate_id": user_data['login']['uuid'],
+            "candidate_name": f"{user_data['name']['first']} {user_data['name']['last']}",
+            "party_affiliation": PARTIES[candidate_number % total_parties],
+            "biography": "A brief bio of the candidate.",
+            "campaign_platform": "Key campaign promises or platform.",
+            "photo_url": user_data['picture']['large']
+        }
+    else:
+        return "Error fetching data"
+
+
+def delivery_report(err, msg):
+    if err is not None:
+        print(f'Message delivery failed: {err}')
+    else:
+        print(f'Message delivered to {msg.topic()} [{msg.partition()}]')
+
+
+# Kafka Topics
+voters_topic = 'voters_topic'
+candidates_topic = 'candidates_topic'
+
 if __name__ == "__main__":
     conn = psycopg2.connect("host=localhost dbname=voting user=postgres password=postgres")
     cur = conn.cursor()
