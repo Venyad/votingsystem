@@ -43,3 +43,18 @@ if __name__ == "__main__":
         StructField("registered_age", IntegerType(), True),
         StructField("vote", IntegerType(), True)
     ])
+
+    votes_df = spark.readStream \
+        .format("kafka") \
+        .option("kafka.bootstrap.servers", "localhost:9092") \
+        .option("subscribe", "votes_topic") \
+        .option("startingOffsets", "earliest") \
+        .load() \
+        .selectExpr("CAST(value AS STRING)") \
+        .select(from_json(col("value"), vote_schema).alias("data")) \
+        .select("data.*")
+
+    # Data preprocessing: type casting and watermarking
+    votes_df = votes_df.withColumn("voting_time", col("voting_time").cast(TimestampType())) \
+        .withColumn('vote', col('vote').cast(IntegerType()))
+    enriched_votes_df = votes_df.withWatermark("voting_time", "1 minute")
