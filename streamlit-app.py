@@ -48,3 +48,17 @@ def fetch_data_from_kafka(consumer):
             data.append(sub_message.value)
     return data
 st.write("REALTIME")
+def update_data():
+    # Placeholder to display last refresh time
+    last_refresh = st.empty()
+    last_refresh.text(f"Last refreshed at: {time.strftime('%Y-%m-%d %H:%M:%S')}")
+
+    # Fetch voting statistics
+    voters_count, candidates_count = fetch_voting_stats()
+
+    # Display total voters and candidates metrics
+    st.markdown("""---""")
+    col1, col2 = st.columns(2)
+    col1.metric("Total Voters", voters_count)
+    col2.metric("Total Candidates", candidates_count)
+update_data()
