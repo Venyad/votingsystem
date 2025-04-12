@@ -47,6 +47,49 @@ def fetch_data_from_kafka(consumer):
         for sub_message in message:
             data.append(sub_message.value)
     return data
+
+def plot_colored_bar_chart(results):
+    data_type = results['candidate_name']
+    colors = plt.cm.viridis(np.linspace(0, 1, len(data_type)))
+    plt.bar(data_type, results['total_votes'], color=colors)
+    plt.xlabel('Candidate')
+    plt.ylabel('Total Votes')
+    plt.title('Vote Counts per Candidate')
+    plt.xticks(rotation=90)
+    return plt
+
+# Function to plot a donut chart for vote distribution
+def plot_donut_chart(data: pd.DataFrame, title='Donut Chart', type='candidate'):
+    if type == 'candidate':
+        labels = list(data['candidate_name'])
+    elif type == 'gender':
+        labels = list(data['gender'])
+
+    sizes = list(data['total_votes'])
+    fig, ax = plt.subplots()
+    ax.pie(sizes, labels=labels, autopct='%1.1f%%', startangle=140)
+    ax.axis('equal')
+    plt.title(title)
+    return fig
+
+# Function to plot a pie chart for vote distribution
+def plot_pie_chart(data, title='Gender Distribution of Voters', labels=None):
+    sizes = list(data.values())
+    if labels is None:
+        labels = list(data.keys())
+
+    fig, ax = plt.subplots()
+    ax.pie(sizes, labels=labels, autopct='%1.1f%%', startangle=140)
+    ax.axis('equal')
+    plt.title(title)
+    return fig
+
+# Function to split a dataframe into chunks for pagination
+@st.cache_data(show_spinner=False)
+def split_frame(input_df, rows):
+    df = [input_df.loc[i: i + rows - 1, :] for i in range(0, len(input_df), rows)]
+    return df
+
 st.write("REALTIME")
 def update_data():
     # Placeholder to display last refresh time
