@@ -3,18 +3,20 @@ from pyspark.sql.functions import from_json, col
 from pyspark.sql.functions import sum as _sum
 from pyspark.sql.types import StructType, StructField, StringType, IntegerType, TimestampType
 
-
 if __name__ == "__main__":
+    from pyspark.sql import SparkSession
+
     spark = (SparkSession.builder
-             .appName("ElectionAnalysis")
-             .master("local[*]")
-             .config("spark.jars.packages",
-                     "org.apache.spark:spark-sql-kafka-0-10_2.13:3.5.0")  
-             .config("spark.jars",
-                     "/Users/airscholar/Dev/Projects/Python/Voting/postgresql-42.7.1.jar") 
-             .config("spark.sql.adaptive.enabled", "false") 
-             .getOrCreate())
-    
+         .appName("ElectionAnalysis")
+         .master("local[*]")  # Run locally with all available cores
+         .config("spark.jars.packages",
+                 "org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.0")  # Spark Kafka connector for Scala 2.13
+         .config("spark.jars",
+                 "/Users/venya/Desktop/votingsystem/postgresql-42.7.1.jar")  # PostgreSQL JDBC driver
+         .config("spark.sql.adaptive.enabled", "false")  # Optional: Disable adaptive execution
+         .getOrCreate())
+
+
     vote_schema = StructType([
         StructField("voter_id", StringType(), True),
         StructField("candidate_id", StringType(), True),
@@ -54,7 +56,33 @@ if __name__ == "__main__":
         .select(from_json(col("value"), vote_schema).alias("data")) \
         .select("data.*")
 
-    # Data preprocessing: type casting and watermarking
     votes_df = votes_df.withColumn("voting_time", col("voting_time").cast(TimestampType())) \
-        .withColumn('vote', col('vote').cast(IntegerType()))
+        .withColumn("vote", col("vote").cast(IntegerType()))
     enriched_votes_df = votes_df.withWatermark("voting_time", "1 minute")
+
+    votes_per_candidate = enriched_votes_df.groupBy(
+        "candidate_id", "candidate_name", "party_affiliation", "photo_url"
+    ).agg(_sum("vote").alias("total_votes"))
+
+    turnout_by_location = enriched_votes_df.groupBy("address.state").count().alias("total_votes")
+
+    votes_per_candidate_to_kafka = votes_per_candidate.selectExpr("to_json(struct(*)) AS value") \
+        .writeStream \
+        .format("kafka") \
+        .option("kafka.bootstrap.servers", "localhost:9092") \
+        .option("topic", "aggregated_votes_per_candidate") \
+        .option("checkpointLocation", "/Users/venya/Desktop/votingsystem/checkpoints/checkpoint1") \
+        .outputMode("update") \
+        .start()
+
+    turnout_by_location_to_kafka = turnout_by_location.selectExpr("to_json(struct(*)) AS value") \
+        .writeStream \
+        .format("kafka") \
+        .option("kafka.bootstrap.servers", "localhost:9092") \
+        .option("topic", "aggregated_turnout_by_location") \
+        .option("checkpointLocation", "/Users/venya/Desktop/votingsystem/checkpoints/checkpoint2") \
+        .outputMode("update") \
+        .start()
+
+    votes_per_candidate_to_kafka.awaitTermination()
+    turnout_by_location_to_kafka.awaitTermination()

@@ -161,3 +161,4 @@ if __name__ == "__main__":
         print('Produced voter {}, data: {}'.format(i, voter_data))
         producer.flush()
 
+
