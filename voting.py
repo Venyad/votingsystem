@@ -44,9 +44,12 @@ def consume_messages():
     except KafkaException as e:
         print(e)
 
+
 if __name__ == "__main__":
     conn = psycopg2.connect("host=localhost dbname=voting user=postgres password=postgres")
     cur = conn.cursor()
+
+    # candidates
     candidates_query = cur.execute("""
         SELECT row_to_json(t)
         FROM (
@@ -79,6 +82,7 @@ if __name__ == "__main__":
                     "voting_time": datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S"),
                     "vote": 1
                 }
+
                 try:
                     print("User {} is voting for candidate: {}".format(vote['voter_id'], vote['candidate_id']))
                     cur.execute("""
