@@ -210,7 +210,7 @@ def sidebar():
         update_data()
 
 # Title of the Streamlit dashboard
-st.title('Real-time Election Dashboard')
+st.title('Real time Election Dashboard')
 topic_name = 'aggregated_votes_per_candidate'
 
 # Display sidebar
